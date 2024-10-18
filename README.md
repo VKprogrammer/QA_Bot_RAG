@@ -1,6 +1,6 @@
 # QA_Bot_RAG
 
-# Link if the app : https://appbotrag-gywbmsfhfw5owfyc5mfuy8.streamlit.app/
+# Link of the app : https://appbotrag-gywbmsfhfw5owfyc5mfuy8.streamlit.app/
 
 Technologies Used:
 
