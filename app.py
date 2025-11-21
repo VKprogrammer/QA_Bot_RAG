@@ -103,7 +103,7 @@ if st.button("Submit"):
         # Generate embeddings in batches to avoid rate limits
         for i in range(0, len(chunks), 10):
             batch = chunks[i:i + 10]
-            response = co.embed(texts=batch, model="embed-english-v2.0")
+            response = co.embed(texts=batch, model="embed-english-v3.0")
             embeddings.extend(response.embeddings)
             time.sleep(5)  # Avoid hitting API rate limits
 
@@ -122,7 +122,7 @@ if st.button("Submit"):
 
 # Step 4: Query the index when the user submits a query
 if query:
-    query_embedding = co.embed(texts=[query], model="embed-english-v2.0").embeddings[0]
+    query_embedding = co.embed(texts=[query], model="embed-english-v3.0").embeddings[0]
     response = index.query(vector=query_embedding, top_k=1, include_metadata=True)
 
     if response['matches']:
