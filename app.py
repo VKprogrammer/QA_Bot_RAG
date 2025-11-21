@@ -63,15 +63,29 @@ def split_into_chunks(text, chunk_size=300):
 # Function to generate response using Cohere LLM
 def generate_response(retrieved_texts, query):
     context = " ".join(retrieved_texts)
-    prompt = f"Based on the following information, answer the question:\n{context}\n\nQuestion: {query}\nAnswer:"
-    response = co.generate(
-        model='command-xlarge-nightly',
-        prompt=prompt,
-        max_tokens=300,
+
+    prompt = f"""
+You are a helpful question-answering assistant.
+Use ONLY the provided context to answer the question.
+
+Context:
+{context}
+
+Question:
+{query}
+
+Answer:
+"""
+
+    response = co.chat(
+        model="c4ai-aya-expanse-8b",
+        message=prompt,
         temperature=0.7,
-        stop_sequences=["\n"]
     )
-    return response.generations[0].text.strip()
+
+    return response.text
+
+
 
 # Main logic triggered on button click
 if st.button("Submit"):
