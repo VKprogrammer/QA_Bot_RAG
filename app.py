@@ -6,7 +6,7 @@ import time
 import os
 
 from pinecone import Pinecone
-os.environ["PINECONE_API_KEY"] = "pcsk_4qWydZ_5xK9d7sqeMXHftX834kYxeNd74PDoUwyqLSNLnTccgZLkFst6WSpeiN7huSDqK7"
+os.environ["PINECONE_API_KEY"] = "fb805f6d-9378-4124-958e-0618bbff6030"
 
 from pinecone import Pinecone, Index  # Import Pinecone and Index
 
@@ -27,7 +27,7 @@ index_name = "myindex"
 index = pc.Index(index_name)
 
 
-api_key = os.environ.get("pcsk_4qWydZ_5xK9d7sqeMXHftX834kYxeNd74PDoUwyqLSNLnTccgZLkFst6WSpeiN7huSDqK7")
+api_key = os.environ.get("fb805f6d-9378-4124-958e-0618bbff6030")
 
 pc = Pinecone(api_key=api_key)
 
