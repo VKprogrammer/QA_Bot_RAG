@@ -10,7 +10,9 @@ from pinecone import Pinecone
 PINECONE_API_KEY = "fb805f6d-9378-4124-958e-0618bbff6030"
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
-index = pc.Index("myindex")
+
+index_info = pc.list_indexes().get("myindex")
+index = pc.Index(host=index_info["host"])
 
 
 # Set your API keys
