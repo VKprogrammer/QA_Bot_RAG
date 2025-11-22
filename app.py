@@ -90,7 +90,7 @@ if st.button("Submit"):
         chunks = split_into_chunks(text)
         embeddings = []
 
-        #st.info("Generating embeddings. This may take some time...")
+        st.info("Generating embeddings. This may take some time...")
 
         # Generate embeddings in batches to avoid rate limits
         for i in range(0, len(chunks), 10):
@@ -107,7 +107,7 @@ if st.button("Submit"):
                 for j in range(i, min(i + batch_size, len(embeddings)))
             ]
             index.upsert(vectors=batch)
-        #st.success("PDF data has been successfully indexed!")
+        st.success("PDF data has been successfully indexed!")
 
     else:
         st.warning("Please upload a PDF document.")
@@ -126,8 +126,8 @@ if query:
 
         # Display the answer and retrieved segments
         st.success(f"Answer: {generated_answer}")
-        # for i, text in enumerate(relevant_texts):
-        #     st.text_area(f"Retrieved Segment {i + 1}:", text, height=150)
+        for i, text in enumerate(relevant_texts):
+            st.text_area(f"Retrieved Segment {i + 1}:", text, height=150)
 
     else:
         st.warning("No relevant results found.")
