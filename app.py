@@ -18,7 +18,7 @@ pc = Pinecone(
 
 index = pc.Index("myindex")  # your serverless index
 
-index.delete(delete_all=True)
+# index.delete(delete_all=True)
 
 
 
