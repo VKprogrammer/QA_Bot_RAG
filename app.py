@@ -90,6 +90,7 @@ Answer:
 # Main logic triggered on button click
 if st.button("Submit"):
     if uploaded_file is not None:
+        index.delete(delete_all=True)
         # Step 1: Extract text from the uploaded PDF
         doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
         text = "".join([doc.load_page(page).get_text() for page in range(doc.page_count)])
