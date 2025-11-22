@@ -16,7 +16,7 @@ pc = Pinecone(
 )
 
 
-index = pc.Index("gen-qa-openai-fast")  # your serverless index
+index = pc.Index("myindex")  # your serverless index
 
 # index.delete(delete_all=True)
 
