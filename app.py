@@ -11,15 +11,22 @@ PINECONE_API_KEY = "fb805f6d-9378-4124-958e-0618bbff6030"
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
 
-# --- FIX START ---
-all_indexes = pc.list_indexes()["indexes"]
+# Fetch indexes using attribute access (not dict indexing)
+response = pc.list_indexes()
+all_indexes = response.indexes
 
-index_info = next((i for i in all_indexes if i["name"] == "myindex"), None)
+# Find your index
+index_info = next((i for i in all_indexes if i.name == "myindex"), None)
 
 if index_info is None:
-    raise ValueError("Index 'myindex' not found in Pinecone project")
+    raise ValueError("Index 'myindex' not found")
 
-index = pc.Index(host=index_info["host"])
+# Connect using the host (correct way)
+index = pc.Index(host=index_info.host)
+
+# Now delete will work
+index.delete(delete_all=True)
+
 # --- FIX END ---
 
 
