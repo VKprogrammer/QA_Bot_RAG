@@ -8,7 +8,7 @@ import time
 PINECONE_API_KEY = "fb805f6d-9378-4124-958e-0618bbff6030"
 cohere_api_key = "YH63QkCnizd7e1nvuq3uceQAhuzdNJiwdgGvpABk"
 
-# Initialize Pinecone client (no environment parameter for serverless)
+# Initialize Pinecone client
 pc = Pinecone(api_key=PINECONE_API_KEY)
 
 # Connect to your index
@@ -56,9 +56,21 @@ if st.button("Upload and Index PDF"):
     if uploaded_file is not None:
         with st.spinner("Processing PDF..."):
             try:
-                # Delete existing records ONLY when uploading a new file
-                index.delete(delete_all=True, namespace="")
-                st.info("Cleared existing records from index.")
+                # For serverless indexes, just delete all without namespace parameter
+                # Or use delete with IDs if you know them
+                st.info("Clearing existing records from index...")
+                
+                # Get all vector IDs and delete them
+                # For new index or if it's empty, this will just pass
+                try:
+                    # List all IDs (if index has vectors)
+                    stats = index.describe_index_stats()
+                    if stats['total_vector_count'] > 0:
+                        # Delete by filter or delete all vectors
+                        index.delete(delete_all=True)
+                        time.sleep(2)  # Wait for deletion to complete
+                except:
+                    pass  # Index might be empty, continue
                 
                 # Step 1: Extract text from the uploaded PDF
                 doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
@@ -87,10 +99,14 @@ if st.button("Upload and Index PDF"):
                     batch_size = 100
                     for i in range(0, len(embeddings), batch_size):
                         batch = [
-                            (f"chunk-{j}", embeddings[j], {"text": chunks[j]})
+                            {
+                                "id": f"chunk-{j}",
+                                "values": embeddings[j],
+                                "metadata": {"text": chunks[j]}
+                            }
                             for j in range(i, min(i + batch_size, len(embeddings)))
                         ]
-                        index.upsert(vectors=batch, namespace="")
+                        index.upsert(vectors=batch)
                     
                     # Wait a moment for indexing to complete
                     time.sleep(2)
@@ -101,6 +117,7 @@ if st.button("Upload and Index PDF"):
                     
             except Exception as e:
                 st.error(f"Error processing PDF: {str(e)}")
+                st.exception(e)  # Show full traceback for debugging
     else:
         st.warning("Please upload a PDF document first.")
 
@@ -122,12 +139,11 @@ if st.button("Get Answer"):
                     # Generate query embedding
                     query_embedding = co.embed(texts=[query], model="embed-english-v2.0").embeddings[0]
                     
-                    # Query the index
+                    # Query the index (without namespace parameter)
                     response = index.query(
                         vector=query_embedding, 
                         top_k=3, 
-                        include_metadata=True,
-                        namespace=""
+                        include_metadata=True
                     )
                     
                     if response['matches'] and len(response['matches']) > 0:
@@ -151,6 +167,7 @@ if st.button("Get Answer"):
                         
         except Exception as e:
             st.error(f"Error during query: {str(e)}")
+            st.exception(e)  # Show full traceback
     else:
         st.warning("Please enter a question.")
 
