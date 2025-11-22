@@ -8,9 +8,13 @@ import time
 PINECONE_API_KEY = "fb805f6d-9378-4124-958e-0618bbff6030"
 cohere_api_key = "YH63QkCnizd7e1nvuq3uceQAhuzdNJiwdgGvpABk"
 
-# Initialize clients
-pc = Pinecone(api_key=PINECONE_API_KEY, environment="us-east-1")
+# Initialize Pinecone client (no environment parameter for serverless)
+pc = Pinecone(api_key=PINECONE_API_KEY)
+
+# Connect to your index
 index = pc.Index("myindex")
+
+# Initialize Cohere client
 co = cohere.Client(cohere_api_key)
 
 # Helper function to split text into chunks
@@ -51,36 +55,52 @@ uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 if st.button("Upload and Index PDF"):
     if uploaded_file is not None:
         with st.spinner("Processing PDF..."):
-            # Delete existing records ONLY when uploading a new file
-            index.delete(delete_all=True)
-            
-            # Step 1: Extract text from the uploaded PDF
-            doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-            text = "".join([doc.load_page(page).get_text() for page in range(doc.page_count)])
-            
-            # Step 2: Split text into chunks and generate embeddings
-            chunks = split_into_chunks(text)
-            embeddings = []
-            
-            st.info("Generating embeddings. This may take some time...")
-            
-            # Generate embeddings in batches to avoid rate limits
-            for i in range(0, len(chunks), 10):
-                batch = chunks[i:i + 10]
-                response = co.embed(texts=batch, model="embed-english-v2.0")
-                embeddings.extend(response.embeddings)
-                time.sleep(1)  # Reduced sleep time
-            
-            # Step 3: Upsert embeddings into Pinecone index
-            batch_size = 32
-            for i in range(0, len(embeddings), batch_size):
-                batch = [
-                    (f"chunk-{j}", embeddings[j], {"text": chunks[j]})
-                    for j in range(i, min(i + batch_size, len(embeddings)))
-                ]
-                index.upsert(vectors=batch)
-            
-            st.success(f"PDF successfully indexed! {len(chunks)} chunks added to the database.")
+            try:
+                # Delete existing records ONLY when uploading a new file
+                index.delete(delete_all=True, namespace="")
+                st.info("Cleared existing records from index.")
+                
+                # Step 1: Extract text from the uploaded PDF
+                doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+                text = "".join([doc.load_page(page).get_text() for page in range(doc.page_count)])
+                
+                if not text.strip():
+                    st.error("No text found in the PDF. Please upload a different document.")
+                else:
+                    # Step 2: Split text into chunks and generate embeddings
+                    chunks = split_into_chunks(text)
+                    embeddings = []
+                    
+                    st.info(f"Generating embeddings for {len(chunks)} chunks. This may take some time...")
+                    
+                    # Generate embeddings in batches to avoid rate limits
+                    progress_bar = st.progress(0)
+                    for i in range(0, len(chunks), 10):
+                        batch = chunks[i:i + 10]
+                        response = co.embed(texts=batch, model="embed-english-v2.0")
+                        embeddings.extend(response.embeddings)
+                        progress_bar.progress(min((i + 10) / len(chunks), 1.0))
+                        time.sleep(1)  # Avoid rate limits
+                    
+                    # Step 3: Upsert embeddings into Pinecone index
+                    st.info("Uploading embeddings to Pinecone...")
+                    batch_size = 100
+                    for i in range(0, len(embeddings), batch_size):
+                        batch = [
+                            (f"chunk-{j}", embeddings[j], {"text": chunks[j]})
+                            for j in range(i, min(i + batch_size, len(embeddings)))
+                        ]
+                        index.upsert(vectors=batch, namespace="")
+                    
+                    # Wait a moment for indexing to complete
+                    time.sleep(2)
+                    
+                    # Verify upload
+                    stats = index.describe_index_stats()
+                    st.success(f"✅ PDF successfully indexed! {stats['total_vector_count']} vectors in database.")
+                    
+            except Exception as e:
+                st.error(f"Error processing PDF: {str(e)}")
     else:
         st.warning("Please upload a PDF document first.")
 
@@ -91,34 +111,55 @@ query = st.text_input("Enter your question:")
 
 if st.button("Get Answer"):
     if query:
-        # Check if there are records in the index
-        stats = index.describe_index_stats()
-        if stats['total_vector_count'] == 0:
-            st.error("No documents indexed yet. Please upload and index a PDF first.")
-        else:
-            with st.spinner("Searching for answer..."):
-                # Generate query embedding
-                query_embedding = co.embed(texts=[query], model="embed-english-v2.0").embeddings[0]
-                
-                # Query the index
-                response = index.query(vector=query_embedding, top_k=3, include_metadata=True)
-                
-                if response['matches']:
-                    # Retrieve the top matching chunks from Pinecone
-                    relevant_texts = [match['metadata']['text'] for match in response['matches']]
+        try:
+            # Check if there are records in the index
+            stats = index.describe_index_stats()
+            
+            if stats['total_vector_count'] == 0:
+                st.error("❌ No documents indexed yet. Please upload and index a PDF first.")
+            else:
+                with st.spinner("Searching for answer..."):
+                    # Generate query embedding
+                    query_embedding = co.embed(texts=[query], model="embed-english-v2.0").embeddings[0]
                     
-                    # Generate the answer using RAG
-                    generated_answer = generate_response(relevant_texts, query)
+                    # Query the index
+                    response = index.query(
+                        vector=query_embedding, 
+                        top_k=3, 
+                        include_metadata=True,
+                        namespace=""
+                    )
                     
-                    # Display the answer
-                    st.success("Answer:")
-                    st.write(generated_answer)
-                    
-                    # Optionally show retrieved segments
-                    with st.expander("View Retrieved Context"):
-                        for i, text in enumerate(relevant_texts):
-                            st.text_area(f"Segment {i + 1}:", text, height=150)
-                else:
-                    st.warning("No relevant results found in the document.")
+                    if response['matches'] and len(response['matches']) > 0:
+                        # Retrieve the top matching chunks from Pinecone
+                        relevant_texts = [match['metadata']['text'] for match in response['matches']]
+                        
+                        # Generate the answer using RAG
+                        generated_answer = generate_response(relevant_texts, query)
+                        
+                        # Display the answer
+                        st.success("Answer:")
+                        st.write(generated_answer)
+                        
+                        # Optionally show retrieved segments
+                        with st.expander("View Retrieved Context"):
+                            for i, (text, match) in enumerate(zip(relevant_texts, response['matches'])):
+                                st.markdown(f"**Segment {i + 1}** (Score: {match['score']:.4f})")
+                                st.text_area(f"Context {i + 1}:", text, height=150, key=f"context_{i}")
+                    else:
+                        st.warning("No relevant results found in the document for your query.")
+                        
+        except Exception as e:
+            st.error(f"Error during query: {str(e)}")
     else:
         st.warning("Please enter a question.")
+
+# Display current index stats in sidebar
+with st.sidebar:
+    st.header("Index Statistics")
+    try:
+        stats = index.describe_index_stats()
+        st.metric("Total Vectors", stats['total_vector_count'])
+        st.metric("Dimension", stats['dimension'])
+    except Exception as e:
+        st.error("Unable to fetch index stats")
