@@ -6,33 +6,12 @@ import time
 import os
 
 from pinecone import Pinecone
-os.environ["PINECONE_API_KEY"] = "fb805f6d-9378-4124-958e-0618bbff6030"
 
-from pinecone import Pinecone, Index  # Import Pinecone and Index
+PINECONE_API_KEY = "fb805f6d-9378-4124-958e-0618bbff6030"
 
-# Get the API key and environment from environment variables
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")  # Get the API key from the env var
-PINECONE_ENV = os.getenv("PINECONE_ENV", "us-east-1-aws")
+pc = Pinecone(api_key=PINECONE_API_KEY)
+index = pc.Index("myindex")
 
-# Check if the API key is set
-if PINECONE_API_KEY is None:
-    raise ValueError("PINECONE_API_KEY environment variable is not set.")
-
-# Initialize Pinecone using Pinecone()
-pc = Pinecone(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
-
-index_name = "myindex"
-
-# Get the index using pc.Index()
-index = pc.Index(index_name)
-
-
-api_key = os.environ.get("fb805f6d-9378-4124-958e-0618bbff6030")
-
-pc = Pinecone(api_key=api_key)
-
-index_name = 'myindex'
-index = pc.Index(index_name)
 
 # Set your API keys
 cohere_api_key = "YH63QkCnizd7e1nvuq3uceQAhuzdNJiwdgGvpABk"  # Replace with your Cohere API key
