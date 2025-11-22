@@ -4,6 +4,7 @@ import pinecone
 import fitz  # PyMuPDF
 import time
 import os
+import os
 
 from pinecone import Pinecone
 
