@@ -11,8 +11,17 @@ PINECONE_API_KEY = "fb805f6d-9378-4124-958e-0618bbff6030"
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
 
-index_info = pc.list_indexes().get("myindex")
+# --- FIX START ---
+all_indexes = pc.list_indexes()["indexes"]
+
+index_info = next((i for i in all_indexes if i["name"] == "myindex"), None)
+
+if index_info is None:
+    raise ValueError("Index 'myindex' not found in Pinecone project")
+
 index = pc.Index(host=index_info["host"])
+# --- FIX END ---
+
 
 
 # Set your API keys
