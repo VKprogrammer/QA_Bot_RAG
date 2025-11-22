@@ -9,7 +9,7 @@ from pinecone import Pinecone
 
 PINECONE_API_KEY = "fb805f6d-9378-4124-958e-0618bbff6030"
 
-pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
+pc = Pinecone(api_key=PINECONE_API_KEY)
 
 index = pc.Index("myindex")  # your serverless index
 
